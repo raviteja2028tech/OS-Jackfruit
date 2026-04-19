@@ -1,31 +1,31 @@
 🚀 Multi-Container Runtime with Kernel Memory Monitor
-👥 Student Information
+👤 Student Information
 
-Raviteja (PES1UG2AM001)
-AKARSH (PES1UG24AM021)
+Name: Raviteja
+Course: Computer Science Engineering
+(Add USN if required)
 
+📌 Project Overview
 
-📌 Project Summary
+This project implements a lightweight container runtime in C that demonstrates core operating system concepts such as process isolation, inter-process communication, memory monitoring, and CPU scheduling.
 
-This project implements a lightweight Linux container runtime in C that demonstrates core operating system concepts.
+The system consists of:
 
-The system includes:
-
-A user-space supervisor to manage multiple containers
+A user-space supervisor to manage container lifecycle
 A kernel module for monitoring and enforcing memory limits
 A logging system using pipes and a bounded buffer
-A command-line interface (CLI) for container lifecycle management
-Scheduling experiments to observe CPU behavior
-⚙️ Build and Run Instructions
-🔹 Step 1: Install Dependencies
+A CLI interface for interacting with containers
+Scheduling experiments to observe CPU allocation behavior
+⚙️ Setup and Execution
+1. Install Dependencies
 sudo apt update
 sudo apt install -y build-essential linux-headers-$(uname -r)
-🔹 Step 2: Build Project
+2. Build the Project
 make
-🔹 Step 3: Load Kernel Module
+3. Load Kernel Module
 sudo insmod monitor.ko
 ls -l /dev/container_monitor
-🔹 Step 4: Setup Root Filesystem
+4. Prepare Root Filesystem
 mkdir rootfs-base
 
 wget https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
@@ -34,131 +34,134 @@ tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-base
 
 cp -a rootfs-base rootfs-alpha
 cp -a rootfs-base rootfs-beta
-🔹 Step 5: Start Supervisor
+5. Start Supervisor
 sudo ./engine supervisor ./rootfs-base
-🔹 Step 6: Run Containers
+6. Start Containers
 sudo ./engine start alpha ./rootfs-alpha /bin/sh
 sudo ./engine start beta ./rootfs-beta /bin/sh
-🔹 Step 7: View Containers
+7. List Running Containers
 sudo ./engine ps
-🔹 Step 8: View Logs
+8. View Logs
 sudo ./engine logs <container_id>
-🔹 Step 9: Stop Containers
+9. Stop Container
 sudo ./engine stop <container_id>
-🔹 Step 10: Unload Kernel Module
+10. Unload Kernel Module
 sudo rmmod monitor
-📸 Features Demonstrated
-1. Multi-container Execution
+🧪 Features Demonstrated
+Multi-Container Execution
 
-Multiple containers can run simultaneously under a single supervisor process.
+Multiple containers can run concurrently under a single supervisor process.
 
-2. Container Metadata Tracking
+Container Monitoring
 
-The engine ps command displays:
+The ps command displays:
 
 Container ID
 Process ID (PID)
-Current state (running/exited/killed)
+State (running/exited)
 Memory limits
-3. Logging System
+Logging System
 
-Container outputs are captured using:
+Container output is captured using:
 
 Pipes
+Producer-consumer model
 Bounded buffer
-Log storage
-4. CLI + IPC
+CLI and IPC
 
-Commands are sent to the supervisor using UNIX domain sockets.
+Commands are communicated via UNIX domain sockets between CLI and supervisor.
 
-5. Memory Monitoring
-Soft limit → generates warning
-Hard limit → terminates container
-6. Scheduling Experiment
+Memory Management
+Soft Limit: Generates warning
+Hard Limit: Terminates container
+Scheduling Behavior
 
-Demonstrates CPU allocation differences using nice values.
+CPU usage varies based on process priority (nice values).
 
-7. Clean Process Handling
+Clean Process Handling
 No zombie processes
-Proper process termination
-Safe cleanup of resources
+Proper cleanup after execution
 🧠 Engineering Concepts
-1. Container Isolation
+Container Isolation
 
 Isolation is achieved using Linux namespaces:
 
-PID namespace → separate process IDs
-UTS namespace → independent hostname
-Mount namespace + chroot → filesystem isolation
+PID Namespace → Separate process IDs
+UTS Namespace → Independent hostname
+Mount Namespace + chroot → Filesystem isolation
 
-Each container operates in its own environment.
+Each container runs in an isolated environment.
 
-2. Supervisor Design
+Supervisor Design
 
-The supervisor:
+The supervisor process:
 
-Manages all containers
-Maintains metadata
+Manages multiple containers
+Maintains container metadata
 Handles signals (SIGCHLD)
-Prevents zombie processes using waitpid()
-3. IPC and Synchronization
-Logging Path
-Pipe from container → supervisor
-Producer-consumer model
-Bounded buffer prevents overflow
-Control Path
-UNIX domain socket used for communication
-Synchronization
-Mutex and condition variables
-Ensures thread-safe operations
-4. Memory Monitoring
-Memory usage measured using RSS
-Kernel module enforces limits
+Cleans up processes using waitpid()
+Inter-Process Communication
 
-Behavior:
+Two communication paths are used:
 
-Soft limit → warning
-Hard limit → SIGKILL
+1. Logging Path
 
-Kernel-level monitoring ensures accuracy and reliability.
+Container → Pipe → Supervisor
+Uses producer-consumer model
 
-5. CPU Scheduling Behavior
+2. Control Path
 
-Experiment:
+CLI → UNIX socket → Supervisor
 
+Synchronization is handled using:
+
+Mutex
+Condition variables
+Memory Monitoring
+
+Memory usage is measured using RSS (Resident Set Size).
+
+Soft limit → Warning
+Hard limit → Process termination
+
+Kernel-space implementation ensures accurate monitoring.
+
+CPU Scheduling Experiment
 yes > /dev/null &
 yes > /dev/null &
+
 sudo renice -5 <PID1>
 sudo renice 10 <PID2>
-Observation:
-Lower nice value → higher CPU usage
-Higher nice value → lower priority
-Explanation:
 
-Linux uses the Completely Fair Scheduler (CFS) to balance CPU usage while respecting priorities.
+Observation:
+
+Lower nice value → higher CPU priority
+Higher nice value → lower CPU usage
+
+Linux uses the Completely Fair Scheduler (CFS) to balance CPU allocation.
 
 ⚖️ Design Decisions
-Component	Choice	Trade-off
-Filesystem	chroot	simpler but less secure
-IPC	UNIX socket	simpler implementation
-Logging	bounded buffer	prevents overflow but adds complexity
-Memory control	kernel module	accurate but complex
+Component	Approach	Trade-off
+Filesystem Isolation	chroot	Simpler but less secure
+IPC	UNIX sockets	Easy to implement
+Logging	Bounded buffer	Prevents overflow
+Memory Control	Kernel module	Accurate but complex
 📊 Scheduling Results
 Process	Nice Value	CPU Usage
 Process 1	-5	High (~100%)
 Process 2	10	Lower (~80%)
-🧹 Resource Cleanup
+🧹 Resource Management
 All child processes are properly terminated
 No zombie processes
 Threads exit cleanly
-Kernel memory freed on module removal
+Kernel memory released after module unload
 🏁 Conclusion
 
 This project demonstrates:
 
-Container creation using Linux namespaces
-Kernel-level memory monitoring
-Logging with concurrent processing
+Containerization using Linux namespaces
+Kernel-level resource monitoring
+Concurrent logging systems
 CPU scheduling behavior
 
-It provides a simplified container runtime that captures key concepts behind modern systems like Docker.
+It provides a simplified implementation of a container runtime, showcasing key principles behind modern systems like Docker.
